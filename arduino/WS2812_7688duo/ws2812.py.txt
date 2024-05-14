@@ -1,0 +1,21 @@
+#!/usr/bin/env python
+
+import serial
+
+ser = serial.Serial("/dev/ttyS0", 9600)
+
+#ser.write(bytearray([255, 255, 255, 0]))
+
+import random
+import time
+
+try:
+        while True:
+                rnd = random.randint(0, 6)
+
+                for i in range(29):
+                        ser.write(bytearray([i,0, 1,0, ((i+1+rnd)%6<3)*255, ((i+3+rnd)%6<3)*255, ((i+5+rnd)%6<3)*255]))
+                        time.sleep(0.01)
+                time.sleep(1)
+finally:
+        ser.close()
