@@ -3,8 +3,7 @@
   #include <avr/power.h>
 #endif
 
-#define PIN 12
-#define NLED 100
+#define NLED 72
 
 // Parameter 1 = number of pixels in strip
 // Parameter 2 = Arduino pin number (most are valid)
@@ -14,7 +13,13 @@
 //   NEO_GRB     Pixels are wired for GRB bitstream (most NeoPixel products)
 //   NEO_RGB     Pixels are wired for RGB bitstream (v1 FLORA pixels, not v2)
 //   NEO_RGBW    Pixels are wired for RGBW bitstream (NeoPixel RGBW products)
-Adafruit_NeoPixel strip = Adafruit_NeoPixel(NLED, PIN, NEO_GRB + NEO_KHZ800);
+Adafruit_NeoPixel strips[] = {
+  Adafruit_NeoPixel(NLED,  8, NEO_GRB + NEO_KHZ800),
+  Adafruit_NeoPixel(NLED,  9, NEO_GRB + NEO_KHZ800),
+  Adafruit_NeoPixel(NLED, 10, NEO_GRB + NEO_KHZ800),
+  Adafruit_NeoPixel(NLED, 11, NEO_GRB + NEO_KHZ800),
+  Adafruit_NeoPixel(NLED, 12, NEO_GRB + NEO_KHZ800)
+};
 
 // IMPORTANT: To reduce NeoPixel burnout risk, add 1000 uF capacitor across
 // pixel power leads, add 300 - 500 Ohm resistor on first pixel's data input
@@ -28,9 +33,11 @@ void setup() {
   #endif
   // End of trinket special code
 
-  strip.begin();
-  strip.setBrightness(100);
-  strip.show(); // Initialize all pixels to 'off'
+  for (int i=0; i<5; i++) {
+    strips[i].begin();
+    strips[i].setBrightness(100);
+    strips[i].show(); // Initialize all pixels to 'off'
+  }
 
   Serial1.begin(9600);
 }
@@ -52,8 +59,8 @@ void loop() {
 
   if (Serial1.available()>0) {
     int nBytes;
-    int buff[7];
-    for (nBytes=0; nBytes<7&&Serial1.available()>0; nBytes++) {
+    int buff[8];
+    for (nBytes=0; nBytes<8&&Serial1.available()>0; nBytes++) {
       buff[nBytes] = Serial1.read();
       delayMicroseconds(1500);
     }
@@ -71,10 +78,17 @@ void loop() {
     strip.show();
     */
 
-    // 2B:first, 2B:count, 3B:RGB
-    if (nBytes==7) {
-      uint16_t first = (buff[0]&0xFF) | ((buff[1]&0xFF)<<8);
-      uint16_t count = (buff[2]&0xFF) | ((buff[3]&0xFF)<<8);
+    // [1B: strip_id,] 2B:first, 2B:count, 3B:RGB
+    if (nBytes==7||nBytes==8) {
+      int *p = buff;
+      int idx = 0;
+      if (nBytes==8) {
+        p = buff+1;
+        idx = buff[0];
+      }
+
+      uint16_t first = (p[0]&0xFF) | ((p[1]&0xFF)<<8);
+      uint16_t count = (p[2]&0xFF) | ((p[3]&0xFF)<<8);
       if (first>=NLED) return;
       if (first+count>NLED) count=NLED-first;
       /*
@@ -85,8 +99,8 @@ void loop() {
         strip.setPixelColor(buff[0], buff[1], buff[2], buff[3]);
       }
       */
-      strip.fill(strip.Color(buff[4], buff[6], buff[5]), first, count);
-      strip.show();
+      strips[idx].fill(strips[idx].Color(p[4], p[6], p[5]), first, count);
+      strips[idx].show();
     }
     
   }
