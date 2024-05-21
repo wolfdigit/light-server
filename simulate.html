@@ -1,0 +1,29 @@
+<html>
+<head>
+<script type="module" src="bundle.js"></script>
+<!--
+    compile: 
+    1. change require('serialport') to require('./serialport')
+    2. npx browserify ws2812.js > bundle.js
+-->
+</head>
+<body style="background-color: black;">
+    <div id="lites" style="display: flex; flex-direction: column;"></div>
+    <script>
+        for (var x = 0; x < 5; x++) {
+            var row = document.createElement("div");
+            row.style.display = "flex";
+            row.style.flexDirection = "row";
+            document.getElementById("lites").appendChild(row);
+            for (var y = 0; y < 72; y++) {
+                var cell = document.createElement("div");
+                cell.id = "lite-" + x + "-" + y;
+                cell.style.width = "10px";
+                cell.style.height = "36px";
+                cell.style.margin = "1px";
+                row.appendChild(cell);
+            }
+        }
+    </script>
+</body>
+</html>
