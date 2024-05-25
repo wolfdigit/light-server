@@ -39,10 +39,10 @@ void setup() {
     strips[i].show(); // Initialize all pixels to 'off'
   }
 
-  Serial1.begin(9600);
+  Serial1.begin(38400);
 }
 
-int cnt=0;
+unsigned long cnt=0;
 void loop() {
   // Some example procedures showing how to display to the pixels:
   //colorWipe(strip.Color(255, 0, 0), 50); // Red
@@ -54,7 +54,7 @@ void loop() {
   //strip.fill(strip.ColorHSV(cnt*300));
   //strip.setPixelColor(0, strip.ColorHSV(cnt*30));
   //strip.show();
-  //cnt++;
+  cnt++;
   //delay(30);
 
   if (Serial1.available()>0) {
@@ -62,7 +62,9 @@ void loop() {
     int buff[8];
     for (nBytes=0; nBytes<8&&Serial1.available()>0; nBytes++) {
       buff[nBytes] = Serial1.read();
-      delayMicroseconds(1500);
+      if (Serial1.available()==0) {
+        delayMicroseconds(1500);
+      }
     }
     //for (int i=0; i<4; i++) {
     //  if (i<nBytes) strip.setPixelColor(i*2+1, strip.ColorHSV(i*20000));
@@ -99,11 +101,17 @@ void loop() {
         strip.setPixelColor(buff[0], buff[1], buff[2], buff[3]);
       }
       */
-      strips[idx].fill(strips[idx].Color(p[4], p[6], p[5]), first, count);
-      strips[idx].show();
+      strips[idx].fill(strips[idx].Color(p[4], p[5], p[6]), first, count);
+      // strips[idx].show();
     }
     
   }
   //delay(4);
   
+  if ((cnt&0x03FF)==0) {
+    int i = (cnt>>10)&0x07;
+    if (i<5) {
+      strips[i].show();
+    }
+  }
 }

@@ -1,7 +1,7 @@
-const BRIGHT = 0.2;
+const BRIGHT = 0.5;
 const PXSIZE = 3;
 const STRIP_LEN = 24;
-const BGCOLOR = [0, 34, 34];
+const BGCOLOR = [0, 12, 12];
 
 function Cmd(strip, start, len, rgb) {
     this.strip = strip

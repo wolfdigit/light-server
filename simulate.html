@@ -1,13 +1,15 @@
 <html>
 <head>
-<script type="module" src="bundle.js"></script>
 <!--
     compile: 
-    1. change require('serialport') to require('./serialport')
+    1. change require('./io') to require('./io-mock')
     2. npx browserify ws2812.js > bundle.js
 -->
 </head>
 <body style="background-color: black;">
+    <div>
+        fifo: <input type="text" id="fifo" value=""/> <input type="button" id="fifoSend" value="send"/>
+    </div>
     <div id="lites" style="display: flex; flex-direction: column;"></div>
     <script>
         for (var x = 0; x < 5; x++) {
@@ -25,5 +27,6 @@
             }
         }
     </script>
+    <script type="module" src="bundle.js"></script>
 </body>
 </html>

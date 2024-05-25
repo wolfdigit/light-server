@@ -1,6 +1,7 @@
-const SerialPort = require('serialport').SerialPort;
+const io = require('./io-mock');
 const U = require('./utils');
 const RndAge = require('./rnd-age');
+const Word = require('./word');
 
 function delay(ms) {
     return function(data) {
@@ -10,21 +11,20 @@ function delay(ms) {
     }
 }
 
-var ser;
-var rndAge = new RndAge();
+var runner = new RndAge();
 function step() {
     function gen(cmd) {
         return function() {
-            ser.write(cmd.serialize());
+            return io.writeSerial(cmd.serialize());
         };
     }
 
-    var cmds = rndAge.run();
+    var cmds = runner.run();
     console.log("n cmd=" + cmds.length);
-    var promise = delay(0)();
+    var promise = Promise.resolve();
     for (var cmd of cmds) {
         // console.log(cmd);
-        promise = promise.then(gen(cmd)).then(delay(10));
+        promise = promise.then(gen(cmd));
     }
     return promise;
 }
@@ -34,31 +34,47 @@ function loop() {
 }
 
 function openAndLoop() {
-    ser = new SerialPort("/dev/ttyS0", { baudRate: 9600 });
-    return new Promise(function(resolve, reject) {
-        ser.open(resolve);
-    }).then(loop).catch(function(err) {
+    io.openSerial()
+    .then(loop)
+    .catch(function(err) {
         console.log("err: " + err);
-        return delay(5000)(err).then(openAndLoop);
+        return delay(5000)().then(openAndLoop);
     });
 }
 
-ser = new SerialPort("/dev/ttyS0", { baudRate: 9600 });
-ser.open(function() {
+
+function setBg() {
     function gen(i) {
         return function() {
-            ser.write((new U.Cmd(i, 0, U.STRIP_LEN, U.BGCOLOR)).serialize());
+            return io.writeSerial((new U.Cmd(i, 0, U.STRIP_LEN, U.BGCOLOR)).serialize());
         };
     }
 
-    var promise = delay(0)();
+    var promise = Promise.resolve();
     for (var i = 0; i < 5; i++) {
-        promise = promise.then(gen(i)).then(delay(10));
+        promise = promise.then(gen(i));
     }
 
-    promise.then(function() {
-        ser.close(function() {
-            openAndLoop();
-        });
-    });
+    return promise;
+}
+
+io.openSerial()
+.then(setBg)
+.then(io.closeSerial)
+.then(openAndLoop);
+
+
+io.onFifo(function(data) {
+    const words = data.split(' ');
+    const mode = words[0];
+    switch (mode.toLowerCase()) {
+        case 'word':
+        case 'wordleft':
+            runner = new Word(words.slice(1));
+            break;
+        case 'rndage':
+        default:
+            runner = new RndAge();
+    }
 });
+io.startFifo('/tmp/pipe');
