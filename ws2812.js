@@ -11,7 +11,8 @@ function delay(ms) {
     }
 }
 
-var runner = new RndAge();
+// var runner = new RndAge();
+var runner = new Word(["times=1", "Hello, world!"]);
 function step() {
     function gen(cmd) {
         return function() {
@@ -20,6 +21,10 @@ function step() {
     }
 
     var cmds = runner.run();
+    if (!Array.isArray(cmds)) {
+        io.sendFifo(cmds);
+        return Promise.resolve();
+    }
     console.log("n cmd=" + cmds.length);
     var promise = Promise.resolve();
     for (var cmd of cmds) {

@@ -1,4 +1,4 @@
-const BRIGHT = 0.5;
+const BRIGHT = 0.3;
 const PXSIZE = 3;
 const STRIP_LEN = 24;
 const BGCOLOR = [0, 12, 12];
@@ -12,8 +12,8 @@ function Cmd(strip, start, len, rgb) {
 Cmd.prototype.serialize = function() {
     const data = [
         this.strip,
-        this.start*PXSIZE, 0,
-        this.len*PXSIZE, 0,
+        this.start*PXSIZE,
+        this.len*PXSIZE,
         Math.floor(this.rgb[0]*BRIGHT), Math.floor(this.rgb[1]*BRIGHT), Math.floor(this.rgb[2]*BRIGHT)
     ];
     if (Buffer.from!==undefined) {
@@ -26,6 +26,13 @@ Cmd.prototype.serialize = function() {
 Cmd.prototype.inspect = function() {
     return this.strip+","+this.start+"-"+this.len+": "+this.rgb
 }
+Cmd.flush = [
+    new Cmd(0, 0, 0, BGCOLOR),
+    new Cmd(1, 0, 0, BGCOLOR),
+    new Cmd(2, 0, 0, BGCOLOR),
+    new Cmd(3, 0, 0, BGCOLOR),
+    new Cmd(4, 0, 0, BGCOLOR),
+];
 
 function hsvToRgb(h, s, v) {
     if (s == 0.0) {

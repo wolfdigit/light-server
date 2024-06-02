@@ -13,7 +13,7 @@ function delay(ms) {
 
 var ser = undefined;
 function openSerial() {
-    ser = new SerialPort("/dev/ttyS0", { baudRate: 38400 });
+    ser = new SerialPort("/dev/ttyS0", { baudRate: 9600 });
     return new Promise(function(resolve, reject) {
         ser.open(resolve);
     });
@@ -28,7 +28,7 @@ function closeSerial() {
 function writeSerial(buff) {
     return new Promise(function(resolve, reject) {
         ser.write(buff, resolve);
-    }).then(delay(5));
+    }).then(delay(2));
 }
 
 
@@ -42,7 +42,7 @@ const cp = require('child_process');
 const fs = require('fs');
 
 var callback = undefined;
-function openAndLoopFifo() {
+function openAndLoopFifo(path) {
     const readFs = fs.createReadStream(path);
     readFs.on('data', function(data) {
         data = data.toString();
@@ -51,16 +51,16 @@ function openAndLoopFifo() {
         }
     });
     readFs.on('error', function(err) {
-        setTimeout(openAndLoopFifo, 5000);
+        setTimeout(openAndLoopFifo, 5000, path);
     });
     readFs.on('close', function() {
-        setTimeout(openAndLoopFifo, 5000);
+        setTimeout(openAndLoopFifo, 5000, path);
     });
 }
 function startFifo(path) {
     const mkfifo = cp.spawn('mkfifo', [path]);
     mkfifo.on('exit', function() {
-        openAndLoopFifo();
+        openAndLoopFifo(path);
     });
 }
 
@@ -68,10 +68,15 @@ function onFifo(cb) {
     callback = cb;
 }
 
+function sendFifo(data) {
+    callback(data);
+}
+
 module.exports = {
     openSerial: openSerial,
     closeSerial: closeSerial,
     writeSerial: writeSerial,
     startFifo: startFifo,
-    onFifo: onFifo
+    onFifo: onFifo,
+    sendFifo: sendFifo,
  };

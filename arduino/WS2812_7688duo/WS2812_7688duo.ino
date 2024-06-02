@@ -39,10 +39,11 @@ void setup() {
     strips[i].show(); // Initialize all pixels to 'off'
   }
 
-  Serial1.begin(38400);
+  Serial1.begin(9600);
 }
 
 unsigned long cnt=0;
+unsigned long lastRecv=0;
 void loop() {
   // Some example procedures showing how to display to the pixels:
   //colorWipe(strip.Color(255, 0, 0), 50); // Red
@@ -58,12 +59,13 @@ void loop() {
   //delay(30);
 
   if (Serial1.available()>0) {
-    int nBytes;
-    int buff[8];
-    for (nBytes=0; nBytes<8&&Serial1.available()>0; nBytes++) {
+    lastRecv = cnt;
+    int nBytes=0;
+    int buff[6];
+    for (nBytes=0; nBytes<6&&Serial1.available()>0; nBytes++) {
       buff[nBytes] = Serial1.read();
-      if (Serial1.available()==0) {
-        delayMicroseconds(1500);
+      for (int wait=0; wait<20&&Serial1.available()==0; wait++) {
+        delayMicroseconds(100);
       }
     }
     //for (int i=0; i<4; i++) {
@@ -79,18 +81,39 @@ void loop() {
     }
     strip.show();
     */
+    /*
+    for (int idx=0; idx<5; idx++) {
+      strips[idx].fill(0, 0, NLED);
+    }
 
-    // [1B: strip_id,] 2B:first, 2B:count, 3B:RGB
-    if (nBytes==7||nBytes==8) {
-      int *p = buff;
-      int idx = 0;
-      if (nBytes==8) {
-        p = buff+1;
-        idx = buff[0];
-      }
+    strips[0].setPixelColor(nBytes, strips[0].ColorHSV(random(65536)));
+    strips[0].show();
+    if (nBytes>=1) {
+      strips[1].setPixelColor(buff[0], strips[1].ColorHSV(random(65536)));
+      strips[1].show();
+    }
+    if (nBytes>=2) {
+      strips[2].setPixelColor(buff[1], strips[2].ColorHSV(random(65536)));
+      strips[2].show();
+    }
+    if (nBytes>=3) {
+      strips[3].setPixelColor(buff[2], strips[3].ColorHSV(random(65536)));
+      strips[3].show();
+    }
+    if (nBytes>=4) {
+      strips[4].setPixelColor(buff[3], strips[4].ColorHSV(random(65536)));
+      strips[4].show();
+    }
+    */
 
-      uint16_t first = (p[0]&0xFF) | ((p[1]&0xFF)<<8);
-      uint16_t count = (p[2]&0xFF) | ((p[3]&0xFF)<<8);
+    // 1B: strip_id, 1B:first, 1B:count, 3B:RGB
+    if (nBytes==6) {
+      uint8_t idx = buff[0];
+
+      //uint16_t first = (p[0]&0xFF) | ((p[1]&0xFF)<<8);
+      //uint16_t count = (p[2]&0xFF) | ((p[3]&0xFF)<<8);
+      uint16_t first = buff[1];
+      uint16_t count = buff[2];
       if (first>=NLED) return;
       if (first+count>NLED) count=NLED-first;
       /*
@@ -101,14 +124,23 @@ void loop() {
         strip.setPixelColor(buff[0], buff[1], buff[2], buff[3]);
       }
       */
-      strips[idx].fill(strips[idx].Color(p[4], p[5], p[6]), first, count);
-      // strips[idx].show();
+      if (count>0) {
+        strips[idx].fill(strips[idx].Color(buff[3], buff[4], buff[5]), first, count);
+      }
+      else {
+        strips[idx].show();
+      }
     }
     
   }
   //delay(4);
   
-  if ((cnt&0x03FF)==0) {
+  if (lastRecv>cnt) {
+    lastRecv = cnt;
+  }
+
+  // if ((cnt&0x03FF)==0) {
+  if (cnt-lastRecv>0x03FF) {
     int i = (cnt>>10)&0x07;
     if (i<5) {
       strips[i].show();

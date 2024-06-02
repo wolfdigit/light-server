@@ -48,7 +48,7 @@ RndAge.prototype.run = function() {
             cmds.push(cmd);
         }
     }
-    return cmds;
+    return cmds.concat(U.Cmd.flush);
 };
 
 module.exports = RndAge;

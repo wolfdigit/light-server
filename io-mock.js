@@ -26,11 +26,11 @@ SerialPort.prototype.write = function(buff, callback) {
     var data = Uint8Array.from(buff);
     // console.log("write: " + data);
     var x = buff.readUInt8(0);
-    var start = buff.readUInt16LE(1);
-    var len = buff.readUInt16LE(3);
-    var r = buff.readUInt8(5);
-    var g = buff.readUInt8(6);
-    var b = buff.readUInt8(7);
+    var start = buff.readUInt8(1);
+    var len = buff.readUInt8(2);
+    var r = buff.readUInt8(3);
+    var g = buff.readUInt8(4);
+    var b = buff.readUInt8(5);
     for (var y=start; y<start+len; y++) {
         document.getElementById("lite-" + x + "-" + y).style.backgroundColor = rgbToBgColor(r, g, b);
     }
@@ -78,10 +78,16 @@ const fs = require('fs');
 
 var callback = undefined;
 function startFifo(path) {
-    document.getElementById("fifoSend").addEventListener('click', function() {
+    const handler = function() {
         const data = document.getElementById("fifo").value;
         if (callback!==undefined) {
             callback(data);
+        }
+    };
+    document.getElementById("fifoSend").addEventListener('click', handler);
+    document.getElementById("fifo").addEventListener('keyup', function(event) {
+        if (event.key === "Enter") {
+            handler();
         }
     });
 }
@@ -90,10 +96,15 @@ function onFifo(cb) {
     callback = cb;
 }
 
+function sendFifo(data) {
+    callback(data);
+}
+
 module.exports = {
     openSerial: openSerial,
     closeSerial: closeSerial,
     writeSerial: writeSerial,
     startFifo: startFifo,
-    onFifo: onFifo
+    onFifo: onFifo,
+    sendFifo: sendFifo,
  };
