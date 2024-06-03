@@ -1,4 +1,4 @@
-const io = require('./io-mock');
+const io = require('./io');
 const U = require('./utils');
 const RndAge = require('./rnd-age');
 const Word = require('./word');
@@ -11,8 +11,8 @@ function delay(ms) {
     }
 }
 
-// var runner = new RndAge();
-var runner = new Word(["times=1", "Hello, world!"]);
+var runner = new RndAge();
+// var runner = new Word(["times=1", "Hello, world!"]);
 function step() {
     function gen(cmd) {
         return function() {
@@ -51,7 +51,7 @@ function openAndLoop() {
 function setBg() {
     function gen(i) {
         return function() {
-            return io.writeSerial((new U.Cmd(i, 0, U.STRIP_LEN, U.BGCOLOR)).serialize());
+            return io.writeSerial(U.Cmd.setBg(U.BGCOLOR).serialize());
         };
     }
 

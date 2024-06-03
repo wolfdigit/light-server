@@ -3,19 +3,22 @@ const PXSIZE = 3;
 const STRIP_LEN = 24;
 const BGCOLOR = [0, 12, 12];
 
-function Cmd(strip, start, len, rgb) {
-    this.strip = strip
-    this.start = start
-    this.len = len
-    this.rgb = rgb
+function Cmd(srcXy, srcRgb, dstXy, dstRgb, ttl) {
+    this.srcXy = srcXy
+    this.srcRgb = srcRgb
+    this.dstXy = dstXy
+    this.dstRgb = dstRgb
+    this.ttl = ttl
 }
+
 Cmd.prototype.serialize = function() {
     const data = [
-        this.strip,
-        this.start*PXSIZE,
-        this.len*PXSIZE,
-        Math.floor(this.rgb[0]*BRIGHT), Math.floor(this.rgb[1]*BRIGHT), Math.floor(this.rgb[2]*BRIGHT)
-    ];
+        this.srcXy[0], this.srcXy[1],
+        Math.floor(this.srcRgb[0]*BRIGHT), Math.floor(this.srcRgb[1]*BRIGHT), Math.floor(this.srcRgb[2]*BRIGHT),
+        this.dstXy[0], this.dstXy[1],
+        Math.floor(this.dstRgb[0]*BRIGHT), Math.floor(this.dstRgb[1]*BRIGHT), Math.floor(this.dstRgb[2]*BRIGHT),
+        this.ttl
+    ]
     if (Buffer.from!==undefined) {
         return Buffer.from(data);
     }
@@ -24,15 +27,11 @@ Cmd.prototype.serialize = function() {
     }
 }
 Cmd.prototype.inspect = function() {
-    return this.strip+","+this.start+"-"+this.len+": "+this.rgb
+    return this.srcXy.join(",")+":"+this.srcRgb.join(",")+" - "+this.dstXy.join(",")+":"+this.dstRgb.join(",") + " @"+this.ttl;
 }
-Cmd.flush = [
-    new Cmd(0, 0, 0, BGCOLOR),
-    new Cmd(1, 0, 0, BGCOLOR),
-    new Cmd(2, 0, 0, BGCOLOR),
-    new Cmd(3, 0, 0, BGCOLOR),
-    new Cmd(4, 0, 0, BGCOLOR),
-];
+Cmd.setBg = function(rgb) {
+    return new Cmd([0,0], BGCOLOR, [0,0], BGCOLOR, 0);
+}
 
 function hsvToRgb(h, s, v) {
     if (s == 0.0) {

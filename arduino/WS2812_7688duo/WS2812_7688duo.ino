@@ -1,7 +1,11 @@
+#include <ArduinoSTL.h>
+#include <map>
+
 #include <Adafruit_NeoPixel.h>
 #ifdef __AVR__
   #include <avr/power.h>
 #endif
+
 
 #define NLED 72
 
@@ -42,108 +46,95 @@ void setup() {
   Serial1.begin(9600);
 }
 
-unsigned long cnt=0;
-unsigned long lastRecv=0;
-void loop() {
-  // Some example procedures showing how to display to the pixels:
-  //colorWipe(strip.Color(255, 0, 0), 50); // Red
-  //for (int i=0; i<strip.numPixels(); i++) {
-  //  strip.setPixelColor(i, strip.ColorHSV(i*6553.5));
-  //}
-  //strip.setPixelColor(0, strip.ColorHSV(cnt*13107));
-  //strip.setPixelColor(strip.numPixels()-1, strip.Color(255,0,0,(cnt*51)&255));
-  //strip.fill(strip.ColorHSV(cnt*300));
-  //strip.setPixelColor(0, strip.ColorHSV(cnt*30));
-  //strip.show();
-  cnt++;
-  //delay(30);
+void show() {
+    unsigned long now = millis();
+    static unsigned long lastRun = 0;
+    if (now<lastRun) lastRun = now;
+    if (now - lastRun < 100) return;
+    lastRun = now;
 
-  if (Serial1.available()>0) {
-    lastRecv = cnt;
-    int nBytes=0;
-    int buff[6];
-    for (nBytes=0; nBytes<6&&Serial1.available()>0; nBytes++) {
-      buff[nBytes] = Serial1.read();
-      for (int wait=0; wait<20&&Serial1.available()==0; wait++) {
-        delayMicroseconds(100);
-      }
-    }
-    //for (int i=0; i<4; i++) {
-    //  if (i<nBytes) strip.setPixelColor(i*2+1, strip.ColorHSV(i*20000));
-    //  else          strip.setPixelColor(i*2+1, 0);
-    //}
-    /*
-    if (nBytes==4) {
-      strip.setPixelColor(4, 0, 255, 0);
-    }
-    else {
-      strip.setPixelColor(4, 255, 0, 0);
-    }
-    strip.show();
-    */
-    /*
-    for (int idx=0; idx<5; idx++) {
-      strips[idx].fill(0, 0, NLED);
-    }
-
-    strips[0].setPixelColor(nBytes, strips[0].ColorHSV(random(65536)));
-    strips[0].show();
-    if (nBytes>=1) {
-      strips[1].setPixelColor(buff[0], strips[1].ColorHSV(random(65536)));
-      strips[1].show();
-    }
-    if (nBytes>=2) {
-      strips[2].setPixelColor(buff[1], strips[2].ColorHSV(random(65536)));
-      strips[2].show();
-    }
-    if (nBytes>=3) {
-      strips[3].setPixelColor(buff[2], strips[3].ColorHSV(random(65536)));
-      strips[3].show();
-    }
-    if (nBytes>=4) {
-      strips[4].setPixelColor(buff[3], strips[4].ColorHSV(random(65536)));
-      strips[4].show();
-    }
-    */
-
-    // 1B: strip_id, 1B:first, 1B:count, 3B:RGB
-    if (nBytes==6) {
-      uint8_t idx = buff[0];
-
-      //uint16_t first = (p[0]&0xFF) | ((p[1]&0xFF)<<8);
-      //uint16_t count = (p[2]&0xFF) | ((p[3]&0xFF)<<8);
-      uint16_t first = buff[1];
-      uint16_t count = buff[2];
-      if (first>=NLED) return;
-      if (first+count>NLED) count=NLED-first;
-      /*
-      if (buff[0]==255) {
-        strip.fill(strip.Color(buff[1], buff[2], buff[3]));
-      }
-      else {
-        strip.setPixelColor(buff[0], buff[1], buff[2], buff[3]);
-      }
-      */
-      if (count>0) {
-        strips[idx].fill(strips[idx].Color(buff[3], buff[4], buff[5]), first, count);
-      }
-      else {
-        strips[idx].show();
-      }
-    }
-    
-  }
-  //delay(4);
-  
-  if (lastRecv>cnt) {
-    lastRecv = cnt;
-  }
-
-  // if ((cnt&0x03FF)==0) {
-  if (cnt-lastRecv>0x03FF) {
-    int i = (cnt>>10)&0x07;
-    if (i<5) {
+    for (int i=0; i<5; i++) {
       strips[i].show();
     }
-  }
+}
+
+uint32_t bgcolor;
+
+typedef struct Obj {
+    uint8_t srcXy[2];
+    uint8_t srcRgb[3];
+    uint8_t dstXy[2];
+    uint8_t dstRgb[3];
+    uint8_t ttl;
+    uint8_t age;
+} Obj;
+std::map<int, Obj> objs;
+
+void render() {
+    unsigned long now = millis();
+    static unsigned long lastRun = 0;
+    if (now<lastRun) lastRun = now;
+    if (now - lastRun < 100) return;
+    lastRun = now;
+
+    for (int i=0; i<5; i++) {
+        strips[i].fill(bgcolor, 0, NLED);
+    }
+    for (auto &p: objs) {
+        int id = p.first;
+        Obj& obj = p.second;
+        if (obj.age>obj.ttl) {
+            objs.erase(id);
+            continue;
+        }
+        double portion = obj.age/(double)obj.ttl;
+        int x = obj.srcXy[0] + (obj.dstXy[0]-obj.srcXy[0])*portion;
+        int y = obj.srcXy[1] + (obj.dstXy[1]-obj.srcXy[1])*portion;
+        int r = obj.srcRgb[0] + (obj.dstRgb[0]-obj.srcRgb[0])*portion;
+        int g = obj.srcRgb[1] + (obj.dstRgb[1]-obj.srcRgb[1])*portion;
+        int b = obj.srcRgb[2] + (obj.dstRgb[2]-obj.srcRgb[2])*portion;
+        if (x>=0 && x<5 && y>=0 && y<NLED) {
+            // strips[x].setPixelColor(y, r, g, b);
+            strips[x].fill(strips[x].Color(r, g, b), y*3, 3);
+        }
+        obj.age++;
+    }
+}
+
+
+void loop() {
+    render();
+    show();
+
+    if (Serial1.available()>0) {
+        int nBytes=0;
+        int buff[11];
+        for (nBytes=0; nBytes<11&&Serial1.available()>0; nBytes++) {
+            buff[nBytes] = Serial1.read();
+            for (int wait=0; wait<20&&Serial1.available()==0; wait++) {
+                delayMicroseconds(100);
+            }
+        }
+        if (nBytes==11) {
+            Obj newObj = Obj{
+                {buff[0], buff[1]},
+                {buff[2], buff[3], buff[4]},
+                {buff[5], buff[6]},
+                {buff[7], buff[8], buff[9]},
+                buff[10],
+                0};
+            if (newObj.ttl==0 &&
+                newObj.srcXy[0]==newObj.dstXy[0] &&
+                newObj.srcXy[1]==newObj.dstXy[1] &&
+                newObj.srcRgb[0]==newObj.dstRgb[0] &&
+                newObj.srcRgb[1]==newObj.dstRgb[1] &&
+                newObj.srcRgb[2]==newObj.dstRgb[2]) {
+                bgcolor = strips[0].Color(newObj.srcRgb[0], newObj.srcRgb[1], newObj.srcRgb[2]);
+            }
+            else {
+                int id = random(INT32_MAX);
+                objs[id] = newObj;
+            }
+        }
+    }
 }
