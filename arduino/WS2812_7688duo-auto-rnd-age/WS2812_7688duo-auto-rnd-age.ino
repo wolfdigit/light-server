@@ -3,7 +3,6 @@
   #include <avr/power.h>
 #endif
 
-
 #define NLED 72
 
 // Parameter 1 = number of pixels in strip
@@ -40,7 +39,7 @@ void setup() {
     strips[i].show(); // Initialize all pixels to 'off'
   }
 
-  Serial1.begin(9600);
+  // Serial1.begin(9600);
   pinMode(13, OUTPUT);
 }
 
@@ -51,14 +50,15 @@ void show() {
     if (now - lastRun < 100) return;
     lastRun = now;
 
-    digitalWrite(13, HIGH);
     for (int i=0; i<5; i++) {
-      strips[i].show();
+      if (strips[i].canShow()) {
+        strips[i].show();
+        delayMicroseconds(300);
+      }
     }
-    digitalWrite(13, LOW);
 }
 
-uint32_t bgcolor=strips[0].Color(0, 3, 3);
+uint32_t bgcolor;
 
 typedef struct Obj {
     uint8_t srcXy[2];
@@ -164,20 +164,33 @@ void render() {
     }
 }
 
-
+unsigned long cnt = 0;
 void loop() {
     render();
     show();
+    cnt++;
+    digitalWrite(13, ((cnt>>8)&0x01));
 
-    if (Serial1.available()>0) {
-        int nBytes=0;
+    if (random(1000)<30) {
         int buff[11];
-        for (nBytes=0; nBytes<11&&Serial1.available()>0; nBytes++) {
-            buff[nBytes] = Serial1.read();
-            for (int wait=0; wait<20&&Serial1.available()==0; wait++) {
-                delayMicroseconds(100);
-            }
-        }
+        int nBytes=11;
+        // while (Serial1.available()>0) {
+        //     Serial1.read();
+        //     for (int wait=0; wait<20&&Serial1.available()==0; wait++) {
+        //         delayMicroseconds(100);
+        //     }
+        // }
+        buff[0] = random(5);
+        buff[1] = random(NLED/3);
+        buff[2] = random(80);
+        buff[3] = random(80);
+        buff[4] = random(80);
+        buff[5] = random(5);
+        buff[6] = random(NLED/3);
+        buff[7] = random(80);
+        buff[8] = random(80);
+        buff[9] = random(80);
+        buff[10] = 30;
         if (nBytes==11) {
             Obj newObj = Obj{
                 {buff[0], buff[1]},
@@ -195,6 +208,7 @@ void loop() {
                 bgcolor = strips[0].Color(newObj.srcRgb[0], newObj.srcRgb[1], newObj.srcRgb[2]);
             }
             else {
+                int id = random(INT32_MAX);
                 objs.insert(newObj);
             }
         }

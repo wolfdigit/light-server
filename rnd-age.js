@@ -17,7 +17,7 @@ RndAge.prototype.add = function() {
 };
 RndAge.prototype.run = function() {
     const rnd = Math.random();
-    if (rnd < 0.3) {
+    if (rnd < 0.8) {
         const cmd = this.add();
         return [cmd];
     }
