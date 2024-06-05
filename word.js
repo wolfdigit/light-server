@@ -102,10 +102,11 @@ function Word(words) {
     }
     console.log(this.map);
 
-    this.pos = -U.STRIP_LEN;
+    this.pos = -1;
     this.FGCOLOR = [255, 255, 0];
     this.BGCOLOR = U.BGCOLOR;
     this.times = -1;
+    this.duration = 3;
 
     // word color=FF00CC,bgcolor=030303,times=1 asdf
     for (var param of params) {
@@ -130,8 +131,8 @@ function Word(words) {
 }
 
 Word.prototype.move = function() {
-    if (this.pos >= this.map[0].length) {
-        this.pos = -U.STRIP_LEN;
+    if (this.pos >= this.map[0].length+U.STRIP_LEN) {
+        this.pos = -1;
         if (this.times > 0) {
             this.times--;
         }
@@ -151,30 +152,24 @@ Word.prototype.render = function() {
         return 1;
     }).bind(this);
     for (var x = 0; x < 5; x++) {
-        var yStart = 0;
-        while (yStart<U.STRIP_LEN) {
-            var mapStart = this.pos + yStart;
-            var yEnd = yStart+1;
-            while (yEnd<U.STRIP_LEN && getPx(x, this.pos+yEnd) === getPx(x, mapStart)) {
-                yEnd++;
-            }
-            var cmd = new U.Cmd(x, yStart, yEnd-yStart, getPx(x,mapStart)===1?this.FGCOLOR:this.BGCOLOR);
+        if (getPx(x, this.pos)) {
+            var cmd = new U.Cmd([x, U.STRIP_LEN], this.FGCOLOR, [x, 0], this.FGCOLOR, U.STRIP_LEN*this.duration);
             cmds.push(cmd);
-            yStart = yEnd;
         }
-        cmds.push(U.Cmd.flush[x]);
     }
 
-    // console.log(cmds);
     return cmds;
 };
 
 var counter = 0;
 Word.prototype.run = function() {
-    if (counter++ % 2 === 0) {
+    if (counter++ % this.duration === 0) {
         this.move();
+        return this.render();
     }
-    return this.render();
+    else {
+        return [];
+    }
 }
 
 module.exports = Word;

@@ -11,8 +11,8 @@ function delay(ms) {
     }
 }
 
-var runner = new RndAge();
-// var runner = new Word(["times=1", "Hello, world!"]);
+// var runner = new RndAge();
+var runner = new Word(["times=1", "Hello, world!"]);
 function step() {
     function gen(cmd) {
         return function() {

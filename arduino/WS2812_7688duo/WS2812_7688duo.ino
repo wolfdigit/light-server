@@ -65,8 +65,8 @@ typedef struct Obj {
     uint8_t srcRgb[3];
     uint8_t dstXy[2];
     uint8_t dstRgb[3];
-    uint8_t ttl;
-    uint8_t age;
+    uint16_t ttl;
+    uint16_t age;
 } Obj;
 
 class MySet {
@@ -145,16 +145,16 @@ void render() {
     }
     for (auto it=objs.begin(); it!=objs.end(); ) {
         Obj &obj = *it;
-        if (obj.age>obj.ttl) {
+        if (obj.age>=obj.ttl) {
             objs.erase(it);
             continue;
         }
         double portion = obj.age/(double)obj.ttl;
-        int x = obj.srcXy[0] + (obj.dstXy[0]-obj.srcXy[0])*portion;
-        int y = obj.srcXy[1] + (obj.dstXy[1]-obj.srcXy[1])*portion;
-        int r = obj.srcRgb[0] + (obj.dstRgb[0]-obj.srcRgb[0])*portion;
-        int g = obj.srcRgb[1] + (obj.dstRgb[1]-obj.srcRgb[1])*portion;
-        int b = obj.srcRgb[2] + (obj.dstRgb[2]-obj.srcRgb[2])*portion;
+        int x = obj.srcXy[0] + ((double)obj.dstXy[0]-obj.srcXy[0])*portion;
+        int y = obj.srcXy[1] + ((double)obj.dstXy[1]-obj.srcXy[1])*portion;
+        int r = obj.srcRgb[0] + ((double)obj.dstRgb[0]-obj.srcRgb[0])*portion;
+        int g = obj.srcRgb[1] + ((double)obj.dstRgb[1]-obj.srcRgb[1])*portion;
+        int b = obj.srcRgb[2] + ((double)obj.dstRgb[2]-obj.srcRgb[2])*portion;
         if (x>=0 && x<5 && y>=0 && y*3<NLED) {
             // strips[x].setPixelColor(y, r, g, b);
             strips[x].fill(strips[x].Color(r, g, b), y*3, 3);
@@ -171,20 +171,20 @@ void loop() {
 
     if (Serial1.available()>0) {
         int nBytes=0;
-        int buff[11];
-        for (nBytes=0; nBytes<11&&Serial1.available()>0; nBytes++) {
+        int buff[12];
+        for (nBytes=0; nBytes<12&&Serial1.available()>0; nBytes++) {
             buff[nBytes] = Serial1.read();
             for (int wait=0; wait<20&&Serial1.available()==0; wait++) {
                 delayMicroseconds(100);
             }
         }
-        if (nBytes==11) {
+        if (nBytes==12) {
             Obj newObj = Obj{
                 {buff[0], buff[1]},
                 {buff[2], buff[3], buff[4]},
                 {buff[5], buff[6]},
                 {buff[7], buff[8], buff[9]},
-                buff[10],
+                buff[10]+buff[11]*256,
                 0};
             if (newObj.ttl==0 &&
                 newObj.srcXy[0]==newObj.dstXy[0] &&
@@ -195,7 +195,9 @@ void loop() {
                 bgcolor = strips[0].Color(newObj.srcRgb[0], newObj.srcRgb[1], newObj.srcRgb[2]);
             }
             else {
-                objs.insert(newObj);
+                if (newObj.ttl<=100*24*5) {
+                  objs.insert(newObj);
+                }
             }
         }
     }

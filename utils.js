@@ -17,7 +17,7 @@ Cmd.prototype.serialize = function() {
         Math.floor(this.srcRgb[0]*BRIGHT), Math.floor(this.srcRgb[1]*BRIGHT), Math.floor(this.srcRgb[2]*BRIGHT),
         this.dstXy[0], this.dstXy[1],
         Math.floor(this.dstRgb[0]*BRIGHT), Math.floor(this.dstRgb[1]*BRIGHT), Math.floor(this.dstRgb[2]*BRIGHT),
-        this.ttl
+        this.ttl&0xFF, (this.ttl>>8)&0xFF
     ]
     if (Buffer.from!==undefined) {
         return Buffer.from(data);
