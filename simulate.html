@@ -28,5 +28,40 @@
         }
     </script>
     <script type="module" src="bundle.js"></script>
+    <script>
+        document.objs = [];
+        function rgbToBgColor(r, g, b) {
+            const scale = 1.0/document.BRIGHT;
+            return "rgb(" + r*scale + "," + g*scale + "," + b*scale + ")";
+        }
+        function mcuStep() {
+            for (var i=0; i<5; i++) {
+                for (var y=0; y<72; y++) {
+                    document.getElementById("lite-" + i + "-" + y).style.backgroundColor = document.BGCOLOR;
+                }
+            }
+            for (var i = 0; i < document.objs.length; ) {
+                const obj = document.objs[i];
+                if (obj.age >= obj.ttl) {
+                    document.objs.splice(i, 1);
+                    continue;
+                }
+                const portion = obj.age / obj.ttl;
+                const x = Math.floor(obj.srcXy[0] + (obj.dstXy[0] - obj.srcXy[0]) * portion);
+                const y = Math.floor(obj.srcXy[1] + (obj.dstXy[1] - obj.srcXy[1]) * portion);
+                const r = Math.floor(obj.srcRgb[0] + (obj.dstRgb[0] - obj.srcRgb[0]) * portion);
+                const g = Math.floor(obj.srcRgb[1] + (obj.dstRgb[1] - obj.srcRgb[1]) * portion);
+                const b = Math.floor(obj.srcRgb[2] + (obj.dstRgb[2] - obj.srcRgb[2]) * portion);
+                if (x >= 0 && x < 5 && y >= 0 && y * 3 < 72) {
+                    for (var j = 0; j < 3; j++) {
+                        document.getElementById("lite-" + x + "-" + (y * 3 + j)).style.backgroundColor = rgbToBgColor(r, g, b);
+                    }
+                }
+                obj.age++;
+                i++;
+            }
+        }
+        setInterval(mcuStep, 100);
+    </script>
 </body>
 </html>

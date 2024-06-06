@@ -3,7 +3,6 @@ const U = require('./utils');
 const MAXAGE = 30.0;
 
 function RndAge() {
-    this.objs = {};
 }
 RndAge.prototype.add = function() {
     const x = Math.floor(5*Math.random());

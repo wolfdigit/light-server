@@ -195,6 +195,10 @@ void loop() {
                 bgcolor = strips[0].Color(newObj.srcRgb[0], newObj.srcRgb[1], newObj.srcRgb[2]);
             }
             else {
+                if (newObj.srcXy[0]>127) newObj.srcXy[0] -= 256;
+                if (newObj.srcXy[1]>127) newObj.srcXy[1] -= 256;
+                if (newObj.dstXy[0]>127) newObj.dstXy[0] -= 256;
+                if (newObj.dstXy[1]>127) newObj.dstXy[1] -= 256;
                 if (newObj.ttl<=100*24*5) {
                   objs.insert(newObj);
                 }
