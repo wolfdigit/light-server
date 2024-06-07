@@ -3,8 +3,7 @@
   #include <avr/power.h>
 #endif
 
-#define NLED (72)
-#define NBUFF (72)
+#define NLED 72
 
 // Parameter 1 = number of pixels in strip
 // Parameter 2 = Arduino pin number (most are valid)
@@ -40,111 +39,92 @@ void setup() {
     strips[i].show(); // Initialize all pixels to 'off'
   }
 
-  Serial1.begin(9600);
-  pinMode(13, OUTPUT);
+  Serial1.begin(115200, SERIAL_8E1);
 }
 
-void show() {
-    unsigned long now = millis();
-    static unsigned long lastRun = 0;
-    if (now<lastRun) lastRun = now;
-    if (now - lastRun < 100) return;
-    lastRun = now;
-
-    for (int i=0; i<5; i++) {
-      strips[i].show();
-    }
+inline void waitRx() {
+  for (int wait=0; wait<20&&Serial1.available()==0; wait++) {
+    delayMicroseconds(100);
+  }
 }
 
-uint32_t bgcolor=strips[0].Color(0, 3, 3);
-
-typedef struct Obj {
-    int8_t srcXy[2];
-    uint8_t srcRgb[3];
-    int8_t dstXy[2];
-    uint8_t dstRgb[3];
-    uint16_t ttl;
-    uint16_t age;
-} Obj;
-Obj objs[NBUFF];
-
-void render() {
-    unsigned long now = millis();
-    static unsigned long lastRun = 0;
-    if (now<lastRun) lastRun = now;
-    if (now - lastRun < 100) return;
-    lastRun = now;
-
-    for (int i=0; i<5; i++) {
-        strips[i].fill(bgcolor, 0, NLED);
-    }
-    for (int i=0; i<NBUFF; i++) {
-        Obj &obj = objs[i];
-        if (obj.ttl==0) continue;
-        if (obj.age>=obj.ttl) {
-            obj.ttl = 0;
-            continue;
-        }
-        double portion = obj.age/(double)obj.ttl;
-        int x = obj.srcXy[0] + ((double)obj.dstXy[0]-obj.srcXy[0])*portion;
-        int y = obj.srcXy[1] + ((double)obj.dstXy[1]-obj.srcXy[1])*portion;
-        int r = obj.srcRgb[0] + ((double)obj.dstRgb[0]-obj.srcRgb[0])*portion;
-        int g = obj.srcRgb[1] + ((double)obj.dstRgb[1]-obj.srcRgb[1])*portion;
-        int b = obj.srcRgb[2] + ((double)obj.dstRgb[2]-obj.srcRgb[2])*portion;
-        if (x>=0 && x<5 && y>=0 && y*3<NLED) {
-            // strips[x].setPixelColor(y, r, g, b);
-            strips[x].fill(strips[x].Color(r, g, b), y*3, 3);
-        }
-        obj.age++;
-    }
+inline void sendAck() {
+  Serial1.write(0x06);
 }
 
+inline void drain() {
+  digitalWrite(13, HIGH);
+  while (Serial1.available()>0) {
+    Serial1.read();
+    waitRx();
+  }
+  sendAck();
+  digitalWrite(13, LOW);
+}
 
+unsigned long cnt=0;
+unsigned long lastRecv=0;
 void loop() {
-    render();
-    show();
+  cnt++;
 
-    if (Serial1.available()>0) {
-        int nBytes=0;
-        int buff[12];
-        for (nBytes=0; nBytes<12&&Serial1.available()>0; nBytes++) {
-            buff[nBytes] = Serial1.read();
-            for (int wait=0; wait<20&&Serial1.available()==0; wait++) {
-                delayMicroseconds(10);
-            }
-        }
-        if (nBytes==12) {
-            Obj newObj = Obj{
-                {buff[0], buff[1]},
-                {buff[2], buff[3], buff[4]},
-                {buff[5], buff[6]},
-                {buff[7], buff[8], buff[9]},
-                buff[10]+buff[11]*256,
-                0};
-            if (newObj.ttl==0 &&
-                newObj.srcXy[0]==newObj.dstXy[0] &&
-                newObj.srcXy[1]==newObj.dstXy[1] &&
-                newObj.srcRgb[0]==newObj.dstRgb[0] &&
-                newObj.srcRgb[1]==newObj.dstRgb[1] &&
-                newObj.srcRgb[2]==newObj.dstRgb[2]) {
-                bgcolor = strips[0].Color(newObj.srcRgb[0], newObj.srcRgb[1], newObj.srcRgb[2]);
-            }
-            else {
-                if (newObj.srcXy[0]>127) newObj.srcXy[0] -= 256;
-                if (newObj.srcXy[1]>127) newObj.srcXy[1] -= 256;
-                if (newObj.dstXy[0]>127) newObj.dstXy[0] -= 256;
-                if (newObj.dstXy[1]>127) newObj.dstXy[1] -= 256;
-                digitalWrite(13, HIGH);
-                if (newObj.ttl<=100*24*1) {
-                  for (int i=0; i<NBUFF; i++) {
-                    if (objs[i].ttl==0) {
-                      objs[i] = newObj;
-                      digitalWrite(13, LOW);
-                      break;
-                    }
-                  }
-                }
-            }
-        }
+  if (Serial1.available()>0) {
+    lastRecv = cnt;
+    int nBytes=0;
+    int xys[2];
+    for (nBytes=0; nBytes<2&&Serial1.available()>0; nBytes++) {
+      xys[nBytes] = Serial1.read();
+      waitRx();
     }
+    if (nBytes==2) {
+      int x1 = xys[0]>>5;
+      int y1 = xys[0]&0x1f;
+      int x2 = xys[1]>>5;
+      int y2 = xys[1]&0x1f;
+      if (x1<0 || x1>=5 || x2<0 || x2>5 || y1<0 || y1>=NLED || y2<0 || y2>NLED || x2<=x1 || y2<y1) {
+        drain();
+        return;
+      }
+      int len = (x2-x1)*(y2-y1);
+      int buff[len*2];
+      for (int i=0; i<len*2; i++) {
+        if (i>=2&&buff[0]>=128) {
+          buff[i] = buff[i%2];
+          continue;
+        }
+        waitRx();
+        buff[i] = Serial1.read();
+        if (buff[i]==EOF) {
+          drain();
+          return;
+        }
+      }
+      if (y2==y1) {
+        for (int x=x1; x<x2; x++) {
+          if (x>=0 && x<5) {
+            strips[x].show();
+          }
+        }
+      }
+      else {
+        int i=0;
+        for (int x=x1; x<x2; x++) {
+          for (int y=y1; y<y2; y++) {
+            int rgb = ((buff[i]&0xFF)<<8) | (buff[i+1]&0xFF);
+            int r = (rgb>>10)&0x1F;
+            int g = (rgb>>5)&0x1F;
+            int b = rgb&0x1F;
+            if (x>=0 && x<5) {
+              strips[x].fill(strips[x].Color(r<<1,g<<1,b<<1), y*3, 3);
+            }
+            i+=2;
+          }
+        }
+      }
+      sendAck();
+    }
+  }
+
+  if (lastRecv>cnt) {
+    lastRecv = cnt;
+  }
 }
