@@ -3,8 +3,8 @@
   #include <avr/power.h>
 #endif
 
-
-#define NLED 72
+#define NLED (72)
+#define NBUFF (72)
 
 // Parameter 1 = number of pixels in strip
 // Parameter 2 = Arduino pin number (most are valid)
@@ -51,87 +51,22 @@ void show() {
     if (now - lastRun < 100) return;
     lastRun = now;
 
-    digitalWrite(13, HIGH);
     for (int i=0; i<5; i++) {
       strips[i].show();
     }
-    digitalWrite(13, LOW);
 }
 
 uint32_t bgcolor=strips[0].Color(0, 3, 3);
 
 typedef struct Obj {
-    uint8_t srcXy[2];
+    int8_t srcXy[2];
     uint8_t srcRgb[3];
-    uint8_t dstXy[2];
+    int8_t dstXy[2];
     uint8_t dstRgb[3];
     uint16_t ttl;
     uint16_t age;
 } Obj;
-
-class MySet {
-  typedef struct Node {
-    Obj v;
-    Node* next;
-  } Node;
-
-  class Iterator {
-    public:
-    Node** np;
-
-    Iterator(Node** val): np(val) {}
-
-    Iterator &operator++() {
-      if (*np) np = &(*np)->next;
-      return *this;
-    }
-
-    Obj &operator*() {
-      return (*np)->v;
-    }
-
-    Obj *operator->() {
-      return &(*np)->v;
-    }
-
-    bool operator!=(const Iterator &other) {
-      return *np != *other.np;
-    }
-  };
-  Node *root = nullptr;
-  Node **endp = &root;
-  Iterator starti = Iterator{&root};
-  Iterator endi = Iterator{&root};
-
-  public:
-  void insert(const Obj &src) {
-      Node *newNode = new Node{src, root};
-      if (newNode==nullptr) return;
-      if (endi.np==&root) {
-          endi.np = &newNode->next;
-      }
-      root = newNode;
-  }
-
-  void erase(const Iterator &it) {
-    Node *del = *it.np;
-    if (*endi.np==del->next) {
-        endi.np = it.np;
-    }
-    *it.np = del->next;
-    delete del;
-  }
-
-  const Iterator& begin() {
-    return starti;
-  }
-
-  const Iterator& end() {
-    return endi;
-  }
-};
-
-MySet objs;
+Obj objs[NBUFF];
 
 void render() {
     unsigned long now = millis();
@@ -143,10 +78,11 @@ void render() {
     for (int i=0; i<5; i++) {
         strips[i].fill(bgcolor, 0, NLED);
     }
-    for (auto it=objs.begin(); it!=objs.end(); ) {
-        Obj &obj = *it;
+    for (int i=0; i<NBUFF; i++) {
+        Obj &obj = objs[i];
+        if (obj.ttl==0) continue;
         if (obj.age>=obj.ttl) {
-            objs.erase(it);
+            obj.ttl = 0;
             continue;
         }
         double portion = obj.age/(double)obj.ttl;
@@ -160,7 +96,6 @@ void render() {
             strips[x].fill(strips[x].Color(r, g, b), y*3, 3);
         }
         obj.age++;
-        ++it;
     }
 }
 
@@ -175,7 +110,7 @@ void loop() {
         for (nBytes=0; nBytes<12&&Serial1.available()>0; nBytes++) {
             buff[nBytes] = Serial1.read();
             for (int wait=0; wait<20&&Serial1.available()==0; wait++) {
-                delayMicroseconds(100);
+                delayMicroseconds(10);
             }
         }
         if (nBytes==12) {
@@ -199,8 +134,15 @@ void loop() {
                 if (newObj.srcXy[1]>127) newObj.srcXy[1] -= 256;
                 if (newObj.dstXy[0]>127) newObj.dstXy[0] -= 256;
                 if (newObj.dstXy[1]>127) newObj.dstXy[1] -= 256;
-                if (newObj.ttl<=100*24*5) {
-                  objs.insert(newObj);
+                digitalWrite(13, HIGH);
+                if (newObj.ttl<=100*24*1) {
+                  for (int i=0; i<NBUFF; i++) {
+                    if (objs[i].ttl==0) {
+                      objs[i] = newObj;
+                      digitalWrite(13, LOW);
+                      break;
+                    }
+                  }
                 }
             }
         }

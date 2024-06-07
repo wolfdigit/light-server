@@ -33,6 +33,14 @@ Cmd.setBg = function(rgb) {
     return new Cmd([0,0], BGCOLOR, [0,0], BGCOLOR, 0);
 }
 
+/**
+ * Converts HSV color values to RGB color values.
+ *
+ * @param {number} h - The hue value in the range [0, 1].
+ * @param {number} s - The saturation value in the range [0, 1].
+ * @param {number} v - The value (brightness) value in the range [0, 255].
+ * @return {Array<number>} An array containing the RGB values in the range [0, 255].
+ */
 function hsvToRgb(h, s, v) {
     if (s == 0.0) {
         return v, v, v

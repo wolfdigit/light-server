@@ -3,6 +3,7 @@ const U = require('./utils');
 const RndAge = require('./rnd-age');
 const Word = require('./word');
 const OutShoot = require('./out-shoot');
+const Fill = require('./fill');
 
 function delay(ms) {
     return function(data) {
@@ -80,6 +81,9 @@ io.onFifo(function(data) {
             break;
         case 'out':
             runner = new OutShoot();
+            break;
+        case 'fill':
+            runner = new Fill();
             break;
         case 'rndage':
         default:
