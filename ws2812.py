@@ -3,6 +3,9 @@
 import random
 import time
 import serial
+
+from clock import Clock
+from scheduler import Scheduler
 random.seed()
 
 from rndAge import RndAge
@@ -24,7 +27,12 @@ def setBg():
 	writeSerial(Cmd.flush(0, 5).serialize())
 
 # runner = RndAge()
-runner = Word(["times=1", "Hello, world!"])
+# runner = Word(["times=1", "Hello, world!"])
+runner = Scheduler(RndAge())
+runner.prepend_task(Word(["times=1", "Hello, world!"]))
+# runner.set_interval(Clock(), 3000)
+runner.set_cronjob(Clock(), "0 */5 * * *")
+
 while True:
 	try:
 		ser = serial.Serial("/dev/ttyS0", baudrate=115200, parity="E")

@@ -20,6 +20,7 @@ class RndAge:
 
 	def __init__(self):
 		self.objs = {}
+		self.resume()
 
 	def add(self):
 		x = int(5*random.random())
@@ -31,11 +32,17 @@ class RndAge:
 		rgb = hsvToRgb(h, s, v)
 		self.objs[(x, y)] = self.Obj(x, y, rgb)
 
+	def resume(self):
+		self.cleared = False
+
 	def run(self):
 		rnd = random.random()
 		if rnd < 0.5:
 			self.add()
 		cmds = []
+		if not self.cleared:
+			self.cleared = True
+			cmds.append(Cmd.setBg(BGCOLOR))
 		for k, obj in self.objs.items():
 			cmd = obj.run()
 			if cmd is None:
